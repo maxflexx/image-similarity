@@ -1,6 +1,7 @@
 from PIL import Image
 from os import listdir
 import numpy as np
+import sys
 
 
 def get_images_from_directory(path):
@@ -26,15 +27,10 @@ def check_duplicates(arr: list, s: str):
 	return True
 
 
-def print_arr(arr: list):
-	for i in arr:
-		print(i)
-
-
 def resize_images(imgs: list):
 	res = []
 	for img in imgs:
-		img1 = img.resize((500, 500))
+		img1 = img.resize((250, 250)).convert("L")
 		img1.filename = img.filename
 		res.append(img1)
 	return res
@@ -48,12 +44,8 @@ def var(img, average):
 	img_np = np.asarray(img.getdata())
 	res = 0
 	for pixel in img_np:
-		r = pixel[0]
-		g = pixel[1]
-		b = pixel[2]
-		res += pow(abs(1 * r - average), 2)
-		res += pow(abs(1 * g - average), 2)
-		res += pow(abs(1 * b - average), 2)
+		r = pixel
+		res += pow(abs(r - average), 2)
 	return res
 
 
@@ -62,21 +54,14 @@ def cov(img1, img2, avg1, avg2):
 	img2_np = np.asarray(img2.getdata())
 	result = 0
 	for i in range(img1.width * img1.height):
-		r1 = img1_np[i][0]
-		g1 = img1_np[i][1]
-		b1 = img1_np[i][2]
-
-		r2 = img2_np[i][0]
-		g2 = img2_np[i][1]
-		b2 = img2_np[i][2]
-
-		result += (b1-avg1) * (b2-avg2) + (g1-avg1) * (g2-avg2) + (r1-avg2) * (r2-avg2) ##migth be not "r1-avg2", but "r1-avg1"
-
+		r1 = img1_np[i]
+		r2 = img2_np[i]
+		result += (r1-avg1) * (r2-avg2)
 	return result
 
 
 def ssim(img1, img2):
-	l = pow(2, 24) - 1
+	l_coef = 255
 	k1 = 0.01
 	k2 = 0.03
 	u1 = avg(img1)
@@ -84,29 +69,28 @@ def ssim(img1, img2):
 	o1 = var(img1, u1)
 	o2 = var(img2, u2)
 	images_cov = cov(img1, img2, u1, u2)
-	c1 = l * k1
-	c2 = l * k2
+	c1 = l_coef * k1
+	c2 = l_coef * k2
 	ssim_numerator = (2 * u1 * u2 + c1) * (2 * images_cov + c2)
 	ssim_denominator = ((u1 * u1) + (u2 * u2) + c1) * (o1 + o2 + c2)
 	return ssim_numerator / ssim_denominator
 
-#6 - 0.65 4-0.44
-#TODO: check cov difference
-#TODO: check if there are any images with similarity > 0.44, which are not actualy similar
+
 def ssim_method(imgs):
 	result = []
-	for img1 in imgs:
-		for img2 in imgs:
-			if img1.filename == img2.filename: continue
+	for i in range(len(imgs)):
+		img1 = imgs[i]
+		for j in range(i + 1, len(imgs)):
+			img2 = imgs[j]
 			err = ssim(img1, img2)
-			if err > 0.85:
+			if err > 0.43:
 				print_str = get_str_to_print(img1, img2)
 				if check_duplicates(result, print_str):
 					result.append(print_str)
-	print_arr(result)
+					print(print_str)
 
-dir_name = "dev_dataset"
+
+dir_name = sys.argv[2]
 images = get_images_from_directory(dir_name)
 images = resize_images(images)
 ssim_method(images)
-
